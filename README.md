@@ -5,6 +5,14 @@ Bibliothek einliest, deren Parameter automatisch als UI-Formular darstellt und d
 per Knopfdruck vereinfacht. Zielgruppe sind vor allem Skripte für Windows/Active Directory,
 Azure, Microsoft Entra, Exchange Online und PnP PowerShell.
 
+## Download
+
+Fertige, eigenständige `.exe` (self-contained, kein separat installiertes .NET nötig) unter
+[Releases](../../releases) — als ZIP mit `PowerShellUI.exe` + Beispiel-Skriptbibliothek.
+Ein neues Release entsteht automatisch, sobald ein Tag im Format `vX.Y.Z` gepusht wird
+(`.github/workflows/release.yml`), oder lässt sich manuell über den Actions-Tab
+("Release" → "Run workflow") auslösen.
+
 ## Funktionsumfang
 
 - **Skript-Bibliothek**: rekursiv durchsuchbarer Ordner mit `.ps1`-Dateien; der oberste

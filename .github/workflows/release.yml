@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release-Version (z. B. v0.1.0) für einen manuellen Lauf ohne Tag"
+        required: false
+        default: "v0.0.0-manual"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $version = "${{ github.ref_name }}"
+          }
+          else {
+            $version = "${{ github.event.inputs.version }}"
+            if ([string]::IsNullOrWhiteSpace($version)) {
+              $version = "v0.0.0-manual"
+            }
+          }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish self-contained win-x64 EXE
+        run: >
+          dotnet publish src/PowerShellUI.App/PowerShellUI.App.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -o publish
+
+      - name: Zip publish output
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish\* -DestinationPath "PowerShellUI-${{ steps.version.outputs.version }}-win-x64.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: PowerShellUI ${{ steps.version.outputs.version }}
+          files: PowerShellUI-${{ steps.version.outputs.version }}-win-x64.zip
