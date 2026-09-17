@@ -13,20 +13,32 @@
         <DataTemplate x:Key="TextParameterTemplate">
             <StackPanel Margin="0,4">
                 <TextBlock Text="{Binding DisplayLabel}" FontWeight="SemiBold" />
-                <TextBox Text="{Binding TextValue, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding HelpMessage}" />
+                <DockPanel>
+                    <CheckBox DockPanel.Dock="Right" Content="merken" Margin="8,0,0,0" VerticalAlignment="Center"
+                              IsChecked="{Binding IsRemembered}"
+                              ToolTip="Wert lokal speichern und beim nächsten Mal automatisch vorausfüllen (unverschlüsselt, keine Kennwörter/Secrets)" />
+                    <TextBox Text="{Binding TextValue, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding HelpMessage}" />
+                </DockPanel>
             </StackPanel>
         </DataTemplate>
 
         <DataTemplate x:Key="SwitchParameterTemplate">
             <StackPanel Margin="0,4" Orientation="Horizontal">
                 <CheckBox IsChecked="{Binding SwitchValue}" Content="{Binding DisplayLabel}" ToolTip="{Binding HelpMessage}" />
+                <CheckBox Content="merken" Margin="12,0,0,0" IsChecked="{Binding IsRemembered}"
+                          ToolTip="Wert lokal speichern und beim nächsten Mal automatisch vorausfüllen" />
             </StackPanel>
         </DataTemplate>
 
         <DataTemplate x:Key="ChoiceParameterTemplate">
             <StackPanel Margin="0,4">
                 <TextBlock Text="{Binding DisplayLabel}" FontWeight="SemiBold" />
-                <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice}" ToolTip="{Binding HelpMessage}" />
+                <DockPanel>
+                    <CheckBox DockPanel.Dock="Right" Content="merken" Margin="8,0,0,0" VerticalAlignment="Center"
+                              IsChecked="{Binding IsRemembered}"
+                              ToolTip="Wert lokal speichern und beim nächsten Mal automatisch vorausfüllen" />
+                    <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice}" ToolTip="{Binding HelpMessage}" />
+                </DockPanel>
             </StackPanel>
         </DataTemplate>
 
@@ -56,20 +68,48 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <ListBox Grid.Column="0"
-                     ItemsSource="{Binding Source={StaticResource GroupedScripts}}"
-                     SelectedItem="{Binding SelectedScript}"
-                     DisplayMemberPath="Name">
-                <ListBox.GroupStyle>
-                    <GroupStyle>
-                        <GroupStyle.HeaderTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}" FontWeight="Bold" Background="#EEEEEE" Padding="4,2" Margin="0,4,0,0" />
-                            </DataTemplate>
-                        </GroupStyle.HeaderTemplate>
-                    </GroupStyle>
-                </ListBox.GroupStyle>
-            </ListBox>
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <ListBox Grid.Row="0"
+                         ItemsSource="{Binding Source={StaticResource GroupedScripts}}"
+                         SelectedItem="{Binding SelectedScript}"
+                         DisplayMemberPath="Name">
+                    <ListBox.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" Background="#EEEEEE" Padding="4,2" Margin="0,4,0,0" />
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ListBox.GroupStyle>
+                </ListBox>
+
+                <Expander Grid.Row="1" Header="Gespeicherte Werte" Margin="0,8,0,0">
+                    <StackPanel MaxHeight="180">
+                        <TextBlock Text="Unverschlüsselt lokal gespeichert – keine Kennwörter/Secrets."
+                                   TextWrapping="Wrap" FontStyle="Italic" Opacity="0.7" Margin="0,0,0,4" />
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="140">
+                            <ItemsControl ItemsSource="{Binding SavedValues}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel Margin="0,2">
+                                            <Button DockPanel.Dock="Right" Content="✕" Padding="4,0"
+                                                    Command="{Binding RemoveCommand}" ToolTip="Vergessen" />
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Width="110" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Value}" TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Expander>
+            </Grid>
 
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
