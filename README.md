@@ -32,6 +32,13 @@ Ein neues Release entsteht automatisch, sobald ein Tag im Format `vX.Y.Z` gepush
 - **Sichere Ausführung**: Parameterwerte werden als einzelne Prozessargumente an
   `powershell.exe`/`pwsh.exe -File ...` übergeben (keine String-Konkatenation), die
   Live-Ausgabe (stdout/stderr) wird im UI gestreamt.
+- **Parameterwerte merken**: jedes Eingabefeld hat ein "merken"-Häkchen. Aktiviert, wird der
+  Wert lokal je Benutzer gespeichert (`%AppData%\PowerShellUI\SavedParameters.json`) und bei
+  jedem Skript mit einem gleichnamigen Parameter automatisch vorausgefüllt — z. B. einmal die
+  PnP-App-`ClientId` hinterlegen, statt sie jedes Mal herauszusuchen oder ins Skript zu
+  schreiben. Die Liste "Gespeicherte Werte" (unter der Skriptliste) zeigt alle gemerkten Werte
+  und erlaubt das Entfernen einzelner Einträge. Die Datei ist **unverschlüsselt** — nicht für
+  Kennwörter/Client-Secrets geeignet, nur für unkritische Werte wie IDs/URLs/Mandanten.
 
 ## Projektstruktur
 
@@ -105,4 +112,6 @@ Die WPF-App läuft ausschließlich unter Windows (WPF-Abhängigkeit sowie `power
 - Authentifizierung/Credential-Handling wird bewusst den Skripten selbst überlassen
   (`Connect-AzAccount`, `Connect-MgGraph`, `Connect-ExchangeOnline`, `Connect-PnPOnline` —
   jeweils interaktiv oder per hinterlegtem Zertifikat/App-Registrierung im Skript selbst).
-- Keine automatisierten Tests/CI bisher vorhanden.
+  Unkritische, wiederkehrende Werte wie eine `ClientId` lassen sich über "merken" ablegen,
+  echte Secrets (Client Secrets, Kennwörter) gehören **nicht** hinein.
+- Keine automatisierten Tests bisher vorhanden (nur ein reiner Build-Check in CI).

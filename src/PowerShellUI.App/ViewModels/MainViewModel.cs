@@ -22,6 +22,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly ScriptLibraryService _libraryService;
     private readonly ModuleManagerService _moduleManagerService;
     private readonly ScriptExecutionService _executionService;
+    private readonly ParameterValueStore _valueStore = new();
 
     private string _libraryPath = Path.Combine(AppContext.BaseDirectory, "ScriptLibrary");
     private ScriptInfo? _selectedScript;
@@ -52,6 +53,7 @@ public sealed class MainViewModel : ObservableObject
             () => RequiredModules.Any(m => m.Status == ModuleStatus.Missing));
         RunScriptCommand = new RelayCommand(RunScriptAsync, () => SelectedScript is not null && !IsBusy);
 
+        RefreshSavedValues();
         _ = LoadLibraryAsync();
     }
 
@@ -60,6 +62,8 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<ScriptParameterViewModel> Parameters { get; } = new();
 
     public ObservableCollection<RequiredModuleViewModel> RequiredModules { get; } = new();
+
+    public ObservableCollection<SavedValueViewModel> SavedValues { get; } = new();
 
     public ObservableCollection<string> OutputLines { get; } = new();
 
@@ -124,7 +128,7 @@ public sealed class MainViewModel : ObservableObject
 
         foreach (var parameter in SelectedScript.Parameters)
         {
-            Parameters.Add(new ScriptParameterViewModel(parameter));
+            Parameters.Add(new ScriptParameterViewModel(parameter, _valueStore));
         }
 
         foreach (var module in SelectedScript.RequiredModules)
@@ -135,6 +139,17 @@ public sealed class MainViewModel : ObservableObject
         if (RequiredModules.Count > 0)
         {
             _ = CheckModulesAsync();
+        }
+
+        RefreshSavedValues();
+    }
+
+    private void RefreshSavedValues()
+    {
+        SavedValues.Clear();
+        foreach (var entry in _valueStore.GetAll().OrderBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            SavedValues.Add(new SavedValueViewModel(entry.Key, entry.Value, _valueStore, RefreshSavedValues));
         }
     }
 
