@@ -9,9 +9,15 @@ Azure, Microsoft Entra, Exchange Online und PnP PowerShell.
 
 Fertige, eigenständige `.exe` (self-contained, kein separat installiertes .NET nötig) unter
 [Releases](../../releases) — als ZIP mit `PowerShellUI.exe` + Beispiel-Skriptbibliothek.
-Ein neues Release entsteht automatisch, sobald ein Tag im Format `vX.Y.Z` gepusht wird
-(`.github/workflows/release.yml`), oder lässt sich manuell über den Actions-Tab
-("Release" → "Run workflow") auslösen.
+
+- **[`latest`](../../releases/tag/latest)**: rollierendes Release, das bei **jedem Push auf
+  `main`** (z. B. jedem gemergten PR) automatisch neu gebaut wird und immer den aktuellen
+  Stand von `main` enthält — als Pre-Release markiert, da nicht extra versioniert/getestet.
+- **Versionierte Releases** (`vX.Y.Z`): entstehen, sobald ein Tag im Format `vX.Y.Z` gepusht
+  wird, oder lassen sich manuell über den Actions-Tab ("Release" → "Run workflow") auslösen —
+  für einen bewusst gesetzten, stabilen Stand.
+
+Beides läuft über `.github/workflows/release.yml`.
 
 ## Funktionsumfang
 

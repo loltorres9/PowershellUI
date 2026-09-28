@@ -2,6 +2,7 @@ name: Release
 
 on:
   push:
+    branches: ["main"]
     tags:
       - "v*.*.*"
   workflow_dispatch:
@@ -26,15 +27,30 @@ jobs:
         shell: pwsh
         run: |
           if ("${{ github.ref_type }}" -eq "tag") {
+            # Echter Versions-Tag (vX.Y.Z) -> stabiles, versioniertes Release.
             $version = "${{ github.ref_name }}"
+            $prerelease = "false"
+            $makeLatest = "true"
           }
-          else {
+          elseif ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            # Manueller Lauf über den Actions-Tab -> stabiles Release mit angegebener/Standard-Version.
             $version = "${{ github.event.inputs.version }}"
             if ([string]::IsNullOrWhiteSpace($version)) {
               $version = "v0.0.0-manual"
             }
+            $prerelease = "false"
+            $makeLatest = "true"
+          }
+          else {
+            # Normaler Push auf main (z. B. gemergter PR) -> rollierendes "latest"-Release,
+            # das immer den aktuellen main-Stand zum Download bereithält.
+            $version = "latest"
+            $prerelease = "true"
+            $makeLatest = "false"
           }
           echo "version=$version" >> $env:GITHUB_OUTPUT
+          echo "prerelease=$prerelease" >> $env:GITHUB_OUTPUT
+          echo "make_latest=$makeLatest" >> $env:GITHUB_OUTPUT
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
@@ -57,9 +73,17 @@ jobs:
         run: |
           Compress-Archive -Path publish\* -DestinationPath "PowerShellUI-${{ steps.version.outputs.version }}-win-x64.zip"
 
+      - name: Rollierenden "latest"-Tag auf den aktuellen Stand verschieben
+        if: steps.version.outputs.version == 'latest'
+        run: |
+          git tag -f latest
+          git push origin latest --force
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
-          name: PowerShellUI ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version == 'latest' && 'PowerShellUI – aktueller main-Stand (Entwickler-Build)' || format('PowerShellUI {0}', steps.version.outputs.version) }}
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          make_latest: ${{ steps.version.outputs.make_latest }}
           files: PowerShellUI-${{ steps.version.outputs.version }}-win-x64.zip
