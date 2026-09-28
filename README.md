@@ -39,6 +39,16 @@ Ein neues Release entsteht automatisch, sobald ein Tag im Format `vX.Y.Z` gepush
   schreiben. Die Liste "Gespeicherte Werte" (unter der Skriptliste) zeigt alle gemerkten Werte
   und erlaubt das Entfernen einzelner Einträge. Die Datei ist **unverschlüsselt** — nicht für
   Kennwörter/Client-Secrets geeignet, nur für unkritische Werte wie IDs/URLs/Mandanten.
+- **Mandanten-Profile**: über die Leiste "Mandanten-Profil" oben im Fenster lassen sich
+  beliebig viele Profile anlegen (z. B. ein Profil pro M365-Tenant). Jedes Profil speichert
+  frei benennbare Name/Wert-Paare — typischerweise `TenantId`, `ClientId` (der PnP-PowerShell-
+  App-Registrierung), `AdminUrl` o. Ä. Ist ein Profil aktiv, werden beim Öffnen eines Skripts
+  alle Parameter mit passendem Namen automatisch aus dem Profil vorausgefüllt; ein Profilwert
+  hat dabei Vorrang vor einem global "gemerkten" Wert, da er mandantenspezifisch ist. Wechselt
+  man das aktive Profil, aktualisieren sich die Werte im aktuell geöffneten Skript sofort. Die
+  Profile liegen — wie die gemerkten Werte — **unverschlüsselt** unter
+  `%AppData%\PowerShellUI\Profiles.json`; auch hier gehören keine Kennwörter/Client-Secrets
+  hinein, echte Anmeldedaten bleiben Sache der Skripte selbst (`Connect-PnPOnline` etc.).
 
 ## Projektstruktur
 
@@ -46,8 +56,9 @@ Ein neues Release entsteht automatisch, sobald ein Tag im Format `vX.Y.Z` gepush
 PowerShellUI.sln
 src/
   PowerShellUI.Core/     Wiederverwendbare Logik (kein UI-Framework-Bezug)
-    Models/               ScriptInfo, ScriptParameterInfo, RequiredModuleInfo, ...
-    Services/             Host-Erkennung, Skript-Introspektion, Modulverwaltung, Ausführung
+    Models/               ScriptInfo, ScriptParameterInfo, RequiredModuleInfo, TenantProfile, ...
+    Services/             Host-Erkennung, Skript-Introspektion, Modulverwaltung, Ausführung,
+                          Profil-/Parameterwert-Speicherung (ProfileStore, ParameterValueStore)
     Assets/               Eingebettete Hilfsskripte (PS 5.1- und 7-kompatibel)
   PowerShellUI.App/      WPF-Anwendung (net8.0-windows)
     ViewModels/           MainViewModel + Parameter-/Modul-ViewModels (hand-rolled MVVM)
@@ -112,6 +123,7 @@ Die WPF-App läuft ausschließlich unter Windows (WPF-Abhängigkeit sowie `power
 - Authentifizierung/Credential-Handling wird bewusst den Skripten selbst überlassen
   (`Connect-AzAccount`, `Connect-MgGraph`, `Connect-ExchangeOnline`, `Connect-PnPOnline` —
   jeweils interaktiv oder per hinterlegtem Zertifikat/App-Registrierung im Skript selbst).
-  Unkritische, wiederkehrende Werte wie eine `ClientId` lassen sich über "merken" ablegen,
-  echte Secrets (Client Secrets, Kennwörter) gehören **nicht** hinein.
+  Unkritische, wiederkehrende Werte wie eine `ClientId` lassen sich über "merken" oder, pro
+  Mandant gebündelt, über ein Mandanten-Profil ablegen; echte Secrets (Client Secrets,
+  Kennwörter) gehören **nicht** hinein.
 - Keine automatisierten Tests bisher vorhanden (nur ein reiner Build-Check in CI).

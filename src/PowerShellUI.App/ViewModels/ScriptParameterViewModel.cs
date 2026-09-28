@@ -15,7 +15,9 @@ public enum ParameterInputKind
 /// (ValidateSet -> Dropdown, switch/bool -> Checkbox, sonst -> Textfeld) den passenden
 /// bearbeitbaren Wert für die WPF-Bindings bereit. Ist der Parameter als "merken" markiert,
 /// wird sein Wert über <see cref="ParameterValueStore"/> lokal persistiert und beim nächsten
-/// Laden eines Skripts mit gleichnamigem Parameter automatisch vorausgefüllt.
+/// Laden eines Skripts mit gleichnamigem Parameter automatisch vorausgefüllt. Definiert das
+/// aktive Mandanten-<see cref="TenantProfile"/> einen gleichnamigen Wert (z. B. TenantId,
+/// ClientId), hat dieser Vorrang vor dem gemerkten Wert, da er mandantenspezifisch ist.
 /// </summary>
 public sealed class ScriptParameterViewModel : ObservableObject
 {
@@ -26,7 +28,7 @@ public sealed class ScriptParameterViewModel : ObservableObject
     private string? _selectedChoice;
     private bool _isRemembered;
 
-    public ScriptParameterViewModel(ScriptParameterInfo info, ParameterValueStore valueStore)
+    public ScriptParameterViewModel(ScriptParameterInfo info, ParameterValueStore valueStore, TenantProfile? activeProfile)
     {
         Info = info;
         _valueStore = valueStore;
@@ -40,9 +42,11 @@ public sealed class ScriptParameterViewModel : ObservableObject
         var savedValue = valueStore.Get(info.Name);
         _isRemembered = savedValue is not null;
 
-        _textValue = savedValue ?? info.DefaultValue;
-        _selectedChoice = savedValue ?? (info.ValidateSet.Count > 0 ? info.ValidateSet[0] : null);
-        _switchValue = savedValue is not null && bool.TryParse(savedValue, out var savedSwitch) && savedSwitch;
+        var effectiveValue = GetProfileValue(activeProfile) ?? savedValue;
+
+        _textValue = effectiveValue ?? info.DefaultValue;
+        _selectedChoice = effectiveValue ?? (info.ValidateSet.Count > 0 ? info.ValidateSet[0] : null);
+        _switchValue = effectiveValue is not null && bool.TryParse(effectiveValue, out var savedSwitch) && savedSwitch;
     }
 
     public ScriptParameterInfo Info { get; }
@@ -124,4 +128,33 @@ public sealed class ScriptParameterViewModel : ObservableObject
         ParameterInputKind.Choice => SelectedChoice,
         _ => TextValue,
     };
+
+    /// <summary>
+    /// Wird beim Wechsel des aktiven Profils aufgerufen, um den angezeigten Wert neu zu
+    /// bestimmen (Profilwert &gt; gemerkter Wert &gt; Skript-Standard), ohne dabei den
+    /// "merken"-Status oder den global gemerkten Wert zu verändern.
+    /// </summary>
+    public void RefreshFromProfile(TenantProfile? activeProfile)
+    {
+        var effectiveValue = GetProfileValue(activeProfile) ?? _valueStore.Get(Name);
+
+        switch (Kind)
+        {
+            case ParameterInputKind.Switch:
+                _switchValue = effectiveValue is not null && bool.TryParse(effectiveValue, out var b) && b;
+                OnPropertyChanged(nameof(SwitchValue));
+                break;
+            case ParameterInputKind.Choice:
+                _selectedChoice = effectiveValue ?? (Info.ValidateSet.Count > 0 ? Info.ValidateSet[0] : null);
+                OnPropertyChanged(nameof(SelectedChoice));
+                break;
+            default:
+                _textValue = effectiveValue ?? Info.DefaultValue;
+                OnPropertyChanged(nameof(TextValue));
+                break;
+        }
+    }
+
+    private string? GetProfileValue(TenantProfile? profile)
+        => profile is not null && profile.Values.TryGetValue(Name, out var value) ? value : null;
 }

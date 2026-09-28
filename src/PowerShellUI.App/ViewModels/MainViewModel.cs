@@ -23,10 +23,12 @@ public sealed class MainViewModel : ObservableObject
     private readonly ModuleManagerService _moduleManagerService;
     private readonly ScriptExecutionService _executionService;
     private readonly ParameterValueStore _valueStore = new();
+    private readonly ProfileStore _profileStore = new();
 
     private string _libraryPath = Path.Combine(AppContext.BaseDirectory, "ScriptLibrary");
     private ScriptInfo? _selectedScript;
     private EditionOption _selectedEdition;
+    private TenantProfile? _selectedProfile;
     private bool _isBusy;
     private string _statusMessage = "Bereit.";
 
@@ -52,8 +54,12 @@ public sealed class MainViewModel : ObservableObject
             InstallMissingModulesAsync,
             () => RequiredModules.Any(m => m.Status == ModuleStatus.Missing));
         RunScriptCommand = new RelayCommand(RunScriptAsync, () => SelectedScript is not null && !IsBusy);
+        NewProfileCommand = new RelayCommand(NewProfileAsync);
+        EditProfileCommand = new RelayCommand(EditProfileAsync, () => SelectedProfile is not null);
+        DeleteProfileCommand = new RelayCommand(DeleteProfileAsync, () => SelectedProfile is not null);
 
         RefreshSavedValues();
+        RefreshProfiles();
         _ = LoadLibraryAsync();
     }
 
@@ -64,6 +70,8 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<RequiredModuleViewModel> RequiredModules { get; } = new();
 
     public ObservableCollection<SavedValueViewModel> SavedValues { get; } = new();
+
+    public ObservableCollection<TenantProfile> Profiles { get; } = new();
 
     public ObservableCollection<string> OutputLines { get; } = new();
 
@@ -78,6 +86,12 @@ public sealed class MainViewModel : ObservableObject
     public ICommand InstallMissingModulesCommand { get; }
 
     public ICommand RunScriptCommand { get; }
+
+    public ICommand NewProfileCommand { get; }
+
+    public ICommand EditProfileCommand { get; }
+
+    public ICommand DeleteProfileCommand { get; }
 
     public string LibraryPath
     {
@@ -101,6 +115,18 @@ public sealed class MainViewModel : ObservableObject
     {
         get => _selectedEdition;
         set => SetField(ref _selectedEdition, value);
+    }
+
+    public TenantProfile? SelectedProfile
+    {
+        get => _selectedProfile;
+        set
+        {
+            if (SetField(ref _selectedProfile, value))
+            {
+                OnSelectedProfileChanged();
+            }
+        }
     }
 
     public bool IsBusy
@@ -128,7 +154,7 @@ public sealed class MainViewModel : ObservableObject
 
         foreach (var parameter in SelectedScript.Parameters)
         {
-            Parameters.Add(new ScriptParameterViewModel(parameter, _valueStore));
+            Parameters.Add(new ScriptParameterViewModel(parameter, _valueStore, SelectedProfile));
         }
 
         foreach (var module in SelectedScript.RequiredModules)
@@ -151,6 +177,86 @@ public sealed class MainViewModel : ObservableObject
         {
             SavedValues.Add(new SavedValueViewModel(entry.Key, entry.Value, _valueStore, RefreshSavedValues));
         }
+    }
+
+    private void RefreshProfiles(string? selectProfileId = null)
+    {
+        Profiles.Clear();
+        foreach (var profile in _profileStore.GetAll().OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            Profiles.Add(profile);
+        }
+
+        var idToSelect = selectProfileId ?? _profileStore.ActiveProfileId;
+        SelectedProfile = Profiles.FirstOrDefault(p => p.Id == idToSelect);
+    }
+
+    private void OnSelectedProfileChanged()
+    {
+        _profileStore.SetActive(SelectedProfile?.Id);
+
+        foreach (var parameter in Parameters)
+        {
+            parameter.RefreshFromProfile(SelectedProfile);
+        }
+    }
+
+    private Task NewProfileAsync()
+    {
+        var dialog = new ProfileEditorWindow(existing: null) { Owner = System.Windows.Application.Current.MainWindow };
+        if (dialog.ShowDialog() == true && dialog.Result is { } profile)
+        {
+            _profileStore.AddOrUpdate(profile);
+            RefreshProfiles(profile.Id);
+            StatusMessage = $"Profil '{profile.Name}' angelegt.";
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task EditProfileAsync()
+    {
+        if (SelectedProfile is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        var dialog = new ProfileEditorWindow(SelectedProfile) { Owner = System.Windows.Application.Current.MainWindow };
+        if (dialog.ShowDialog() == true && dialog.Result is { } profile)
+        {
+            _profileStore.AddOrUpdate(profile);
+            RefreshProfiles(profile.Id);
+            StatusMessage = $"Profil '{profile.Name}' gespeichert.";
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task DeleteProfileAsync()
+    {
+        if (SelectedProfile is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        var result = System.Windows.MessageBox.Show(
+            System.Windows.Application.Current.MainWindow,
+            $"Profil '{SelectedProfile.Name}' wirklich löschen?",
+            "Profil löschen",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Question);
+
+        if (result != System.Windows.MessageBoxResult.Yes)
+        {
+            return Task.CompletedTask;
+        }
+
+        var name = SelectedProfile.Name;
+        _profileStore.Remove(SelectedProfile.Id);
+        RefreshProfiles();
+        StatusMessage = $"Profil '{name}' gelöscht.";
+
+        return Task.CompletedTask;
     }
 
     private async Task BrowseLibraryAsync()
